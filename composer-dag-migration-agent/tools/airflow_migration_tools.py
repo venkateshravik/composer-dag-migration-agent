@@ -1,4 +1,3 @@
-import vertexai
 from vertexai.generative_models import GenerativeModel
 
 from ..translator_system_prompt import v1_to_v2_system_prompt, v1_to_v3_system_prompt
@@ -16,13 +15,11 @@ def translate_airflow_dag(v1_code: str, destination_airflow_version: str) -> dic
         A dictionary containing the translated code.
     """
     try:
-        TRANSLATOR_SYSTEM_PROMPT = None
-        if destination_airflow_version == "v2":
-            TRANSLATOR_SYSTEM_PROMPT = v1_to_v2_system_prompt
-        elif destination_airflow_version == "v3":
-            TRANSLATOR_SYSTEM_PROMPT = v1_to_v3_system_prompt
-        else:
-            raise ValueError(f"Unsupported destination version: {destination_airflow_version}")
+        system_prompt_selector = {
+            "v2": v1_to_v2_system_prompt,
+            "v3": v1_to_v3_system_prompt
+        }
+        TRANSLATOR_SYSTEM_PROMPT = system_prompt_selector.get(destination_airflow_version)
 
         model = GenerativeModel(
             config.generative_model,
@@ -30,8 +27,12 @@ def translate_airflow_dag(v1_code: str, destination_airflow_version: str) -> dic
         )
         
         response = model.generate_content(v1_code)
+
+        lines = response.text.splitlines()
+        cleaned_lines = lines[1:-1]
+        cleaned_response = "\n".join(cleaned_lines)
         
-        return {"translated_code": response.text}
+        return {"translated_code": cleaned_response}
     
     except Exception as e:
         print(f"Error during translation: {e}")
